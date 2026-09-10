@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASTAT OS · инструкция</title>
+  <style>
+    :root {
+      --paper: #0b0d12;
+      --panel: #14181f;
+      --ink: #f2f4f8;
+      --muted: #8f9bad;
+      --line: #232a34;
+      --steel: #64a1ff;
+      --go: #4fd39a;
+      --wait: #f0b45a;
+      --stop: #ff7a6d;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
+    button { font: inherit; cursor: pointer; }
+    .stage {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      perspective: 1480px;
+      perspective-origin: 50% 44%;
+    }
+    .floor {
+      position: absolute; inset: auto 0 0; height: 26%;
+      background: #080a0e;
+      opacity: .5;
+      pointer-events: none;
+    }
+    .world {
+      position: absolute; inset: 0 0 18% 0;
+      transform-style: preserve-3d;
+    }
+    .panel {
+      position: absolute;
+      left: 50%; top: 48%;
+      width: min(980px, 72vw);
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      transition: transform 1.05s cubic-bezier(.22, 1, .36, 1), opacity .65s ease;
+    }
+    .panel .frame {
+      background: #101319;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .panel img {
+      display: block; width: 100%; height: auto;
+      aspect-ratio: 16 / 10; object-fit: cover; object-position: top;
+    }
+    .panel .card {
+      width: min(640px, 86vw);
+      margin: 0 auto;
+      padding: 36px 40px 32px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .panel .card h1 { margin: 0 0 10px; font-size: 42px; letter-spacing: -.03em; }
+    .panel .card p { margin: 0 0 12px; color: var(--muted); max-width: 52ch; }
+    .panel.active .frame,
+    .panel.active .card { outline: 1px solid color-mix(in srgb, var(--steel) 55%, transparent); }
+    .hud {
+      position: absolute; z-index: 3; left: 24px; right: 24px; bottom: 22px;
+      display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end;
+      pointer-events: none;
+    }
+    .hud > * { pointer-events: auto; }
+    .note {
+      max-width: 520px;
+      padding: 14px 16px 12px;
+      background: color-mix(in srgb, var(--paper) 78%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+    }
+    .note .kicker { display: block; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--steel); margin-bottom: 4px; }
+    .note h2 { margin: 0 0 6px; font-size: 22px; }
+    .note p { margin: 0; color: var(--muted); }
+    .note .do { margin-top: 8px; color: var(--ink); }
+    .note .limit { margin-top: 8px; font-size: 13px; color: var(--wait); }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .controls button, .modes button {
+      background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px 12px; min-width: 40px;
+    }
+    .controls button.primary, .modes button.on { background: var(--steel); color: #081018; border-color: transparent; }
+    .top {
+      position: absolute; z-index: 3; top: 18px; left: 24px; right: 24px;
+      display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    }
+    .brand { font-weight: 700; letter-spacing: .04em; }
+    .brand small { display: block; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+    .modes { display: flex; gap: 6px; }
+    .dots { display: flex; gap: 6px; margin-top: 12px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); display: block; }
+    .dots i.on { background: var(--steel); }
+    .chain { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .chain b { font-weight: 650; font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); }
+    .chain b.go { color: var(--go); border-color: color-mix(in srgb, var(--go) 40%, var(--line)); }
+    .chain b.wait { color: var(--wait); }
+    .chain b.ok { color: var(--steel); }
+    .src { position: absolute; z-index: 3; left: 24px; top: 58px; font-size: 11px; color: var(--muted); }
+    .help {
+      position: absolute; z-index: 4; right: 24px; top: 64px; width: 280px;
+      padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      color: var(--muted); font-size: 13px; display: none;
+    }
+    .help.on { display: block; }
+    .help kbd { color: var(--ink); }
+    @media (prefers-reduced-motion: reduce) {
+      .world { transition: none; }
+      .stage { perspective: none; }
+    }
+    @media (max-width: 800px) {
+      .panel { width: 92vw; }
+      .hud { grid-template-columns: 1fr; }
+      .note h2 { font-size: 18px; }
+      .panel .card h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="top">
+      <div class="brand">ASTAT OS <small>завод АСТАТ · Минск</small></div>
+      <div class="modes">
+        <button type="button" id="btnShow">Показ</button>
+        <button type="button" id="btnGuide" class="on">Шаги</button>
+        <button type="button" id="btnHelp">Клавиши</button>
+      </div>
+    </div>
+    <p class="src">Кадры: рабочее место, 10.09.2026, контур выключен, демо-каталог. Не съёмка живого цеха.</p>
+    <div class="help" id="help">
+      <div><kbd>→</kbd> <kbd>Пробел</kbd> дальше · <kbd>←</kbd> назад</div>
+      <div><kbd>P</kbd> показ · <kbd>S</kbd> шаги · <kbd>Esc</kbd> в начало</div>
+    </div>
+    <div class="world" id="world"></div>
+    <div class="floor"></div>
+    <div class="hud">
+      <article class="note" id="note"></article>
+      <div class="controls">
+        <button type="button" id="prev" aria-label="Назад">←</button>
+        <button type="button" class="primary" id="next">Дальше</button>
+        <button type="button" id="play">Смотреть</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const BEATS = [
+      {
+        id: "intro",
+        kicker: "Что это",
+        title: "Стол цеха, не бухгалтерия",
+        body: "ASTAT OS ведёт заказ от запроса до сдачи: маршрут, наряд, стоп с причиной, печать МК-01. Это не 1С и не учёт денег.",
+        do: "Два режима ниже: показ сам летит по экранам. Шаги — вы листаете и читаете, куда нажать.",
+        limit: "Цифры и клиенты на кадрах — демо-каталог рабочего места. Общая база завода в этом показе не открывалась.",
+        card: {
+          title: "ASTAT OS",
+          lead: "Порядок в производстве — это прибыль, а не удача.",
+          text: "Инструкция по живым экранам. Камера ходит по реальным снимкам интерфейса, не по выдуманному цеху."
+        }
+      },
+      {
+        id: "wall",
+        img: "media/01-wall.jpg",
+        kicker: "Стена · директор",
+        title: "Картина смены с одного стола",
+        body: "Слева — службы. В центре — стопы, ПДО, загрузка участков, кооперация. Справа — ближайшие события. Чип «рабочее место» честно говорит: данные в этом браузере.",
+        do: "Откройте Стену. Красное «2 стопа» — заказы без движения. Не путайте это с датчиками на станках.",
+        limit: "Полоски «загрузка участков» и «посты > 80%» частично берутся из справочника постов, не из IIoT."
+      },
+      {
+        id: "orders",
+        img: "media/02-orders.jpg",
+        kicker: "Заказы",
+        title: "Один список на весь поток",
+        body: "Фильтры — статусы: запрос, просчёт КТО, ТКП, ждёт металл, в цехе, ОТК, стоит, отгрузка. В строке — маршрут, текущая операция, кто держит, срок.",
+        do: "Заказы → строка → досье. Канбан и гант читают тот же список, не вторую базу.",
+        limit: null
+      },
+      {
+        id: "dossier",
+        img: "media/03-dossier.jpg",
+        kicker: "Карточка · A-1064",
+        title: "Позиция, маршрут, нормы",
+        body: "Карточка корпуса насоса: материал, технолог, утверждённый маршрут, норма партии. Вкладки: техкарта, состав, наряды, нормы, комментарии. Цена на этом кадре видна, потому что открыт режим директора.",
+        do: "Откройте заказ. «Печать маршрутной карты» даёт форму МК-01. В цех идёт только утверждённый маршрут.",
+        limit: "Блок «Файлы и архив» на пилоте ещё не смонтирован — это написано на экране."
+      },
+      {
+        id: "jobs",
+        img: "media/04-jobs.jpg",
+        kicker: "Наряды · правило",
+        title: "Следующая не стартует сама",
+        body: "Вкладка «Наряды». Операция 005 сдана 8/8. 010 можно начать. 015 не идёт параллельно — ждёт 010, пока директор не напишет причину и не разрешит опережение.",
+        do: "Мастер: Начать / Сдать / Запросить директора. Директор: причина обязательна, затем Разрешить или Отказать. Мастер сам себе разрешить не может.",
+        limit: "Кадр снят после настоящего жеста 10.09.2026: 005 сдали, 015 разрешили с причиной. Это не картинка-макет.",
+        chain: true
+      },
+      {
+        id: "kanban",
+        img: "media/05-kanban.jpg",
+        kicker: "Канбан",
+        title: "Колонка — статус заказа",
+        body: "Запрос ещё без технологии. Просчёт КТО пишет маршрут. ТКП у клиента — цех не трогаем. Ждёт металл. В цехе. ОТК. Стоит. Отгрузка.",
+        do: "Карточка открывает техкарту и PDF справа, с доски уходить не нужно.",
+        limit: null
+      },
+      {
+        id: "floor",
+        img: "media/06-floor.jpg",
+        kicker: "Посты",
+        title: "Рабочий центр, не абстрактный ресурс",
+        body: "Каждый пост — календарь и очередь нарядов. Свободный верстак при занятом слесаре — не мощность. На кадре видно, кто идёт на Lynx и на сварке.",
+        do: "Посты → карточка центра → наряды справа.",
+        limit: "Проценты на карточках постов — поле справочника, не живой съём со станка."
+      },
+      {
+        id: "routes",
+        img: "media/07-routes.jpg",
+        kicker: "КТО",
+        title: "Черновик в цех не выдаём",
+        body: "Книга маршрутов: обозначение, ревизия, материал, Тпз/Тшт, переходы, инструмент, оснастка, контроль. Утверждённые и черновики разделены.",
+        do: "Маршруты → выберите техпроцесс → печать карты. Пока маршрут черновик, запуска в цех нет.",
+        limit: null
+      },
+      {
+        id: "print",
+        img: "media/08-print.jpg",
+        kicker: "Печать · МК-01",
+        title: "Бумага, которую можно унести на пост",
+        body: "Форма МК-01: обозначение, материал, заказ, нормы, операции, подписи технолога, мастера, ОТК, исполнителя.",
+        do: "С карточки заказа — «Печать маршрутной карты». На печати нет цены для мастера.",
+        limit: "Нижний блок «Наряды» на этой форме ещё читает каталог (там лишний 018). Живое правило очерёдности — на вкладке Наряды, не здесь."
+      },
+      {
+        id: "board",
+        img: "media/09-board.jpg",
+        kicker: "Табло смены",
+        title: "План и факт на отдельном окне",
+        body: "Повесить на стену: факт/план по нарядам, кто стоит и почему. Открывается отдельно от рабочего стола.",
+        do: "В сайдбаре — «Табло смены · отдельное окно».",
+        limit: "«Загрузка цеха» и проценты постов на табло — не доказанный съём со станков."
+      },
+      {
+        id: "tasks",
+        img: "media/10-tasks.jpg",
+        kicker: "Службы",
+        title: "Один стоп — несколько поручений",
+        body: "Стоп по КД падает директору, ГИ, технологу и продажам. Мастер видит очередь постов. Здесь не канбан задач SaaS, а нагрузка служб завода.",
+        do: "Службы → выберите роль → откройте поручение. Оно ведёт в заказ.",
+        limit: null
+      },
+      {
+        id: "close",
+        kicker: "Граница продукта",
+        title: "Что умеет и чего нет",
+        body: "Умеет: заказ, маршрут с утверждением, наряд по порядку, стоп с причиной, роли служб, печать МК, табло, сейфы архива. Обход очерёдности — только директор с письменной причиной.",
+        do: "Два контура одной сборки: рабочее место в браузере и Linux-ядро с логинами. Пароли в этой инструкции не показываем.",
+        limit: "Не обещаем 1С, складской учёт денег, живой ключ Олеси и заводской HTTPS — в этом пакете они не проверялись.",
+        card: {
+          title: "Дальше",
+          lead: "Откройте ASTAT OS и пройдите A-1064 → Наряды.",
+          text: "Сдайте 005, попробуйте начать 015 без согласия — система не пустит. Это и есть продукт."
+        }
+      }
+    ];
+
+    const world = document.getElementById("world");
+    const note = document.getElementById("note");
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let i = 0;
+    let mode = "guide";
+    let timer = 0;
+
+    function pose(n, current) {
+      const d = n - current;
+      const x = reduced ? 0 : d * 1080;
+      const z = reduced ? 0 : -Math.abs(d) * 380;
+      const ry = reduced ? 0 : d * -16;
+      const o = Math.abs(d) > 2 ? 0 : d === 0 ? 1 : 0.32;
+      return { x, z, ry, o };
+    }
+
+    BEATS.forEach((beat, n) => {
+      const el = document.createElement("div");
+      el.className = "panel";
+      el.dataset.i = String(n);
+      if (beat.img) {
+        el.innerHTML = `<div class="frame"><img src="${beat.img}" alt="${beat.title}" onerror="this.parentElement.textContent='Нет кадра ${beat.img}'" /></div>`;
+      } else {
+        el.innerHTML = `<div class="card"><p class="kicker" style="color:var(--steel);letter-spacing:.14em;text-transform:uppercase;font-size:11px">${beat.kicker}</p><h1>${beat.card.title}</h1><p>${beat.card.lead}</p><p>${beat.card.text}</p></div>`;
+      }
+      world.appendChild(el);
+    });
+
+    function render() {
+      document.querySelectorAll(".panel").forEach((el, n) => {
+        const p = pose(n, i);
+        el.classList.toggle("active", n === i);
+        el.style.opacity = String(p.o);
+        el.style.transform = `translate(-50%, -50%) translate3d(${p.x}px, 0, ${p.z}px) rotateY(${p.ry}deg)`;
+        el.style.visibility = p.o === 0 ? "hidden" : "visible";
+      });
+      const b = BEATS[i];
+      note.innerHTML = `
+        <span class="kicker">${String(i + 1).padStart(2, "0")} / ${String(BEATS.length).padStart(2, "0")} · ${b.kicker}</span>
+        <h2>${b.title}</h2>
+        <p>${b.body}</p>
+        ${b.chain ? `<div class="chain"><b class="go">005 сдана</b><b class="ok">010 можно начать</b><b class="wait">015 только с согласием</b><b>020 ждёт 015</b><b>025 ОТК</b></div>` : ""}
+        <p class="do">${b.do}</p>
+        ${b.limit ? `<p class="limit">${b.limit}</p>` : ""}
+        <div class="dots">${BEATS.map((_, n) => `<i class="${n === i ? "on" : ""}"></i>`).join("")}</div>
+      `;
+      document.getElementById("btnShow").classList.toggle("on", mode === "show");
+      document.getElementById("btnGuide").classList.toggle("on", mode === "guide");
+      document.getElementById("play").textContent = mode === "show" ? "Пауза" : "Смотреть";
+    }
+
+    function go(n) {
+      i = (n + BEATS.length) % BEATS.length;
+      render();
+    }
+
+    function stopPlay() {
+      mode = "guide";
+      clearInterval(timer);
+      timer = 0;
+      render();
+    }
+
+    function startPlay() {
+      mode = "show";
+      clearInterval(timer);
+      timer = setInterval(() => go(i + 1), 7800);
+      render();
+    }
+
+    document.getElementById("next").onclick = () => { if (mode === "show") stopPlay(); go(i + 1); };
+    document.getElementById("prev").onclick = () => { if (mode === "show") stopPlay(); go(i - 1); };
+    document.getElementById("play").onclick = () => (mode === "show" ? stopPlay() : startPlay());
+    document.getElementById("btnShow").onclick = startPlay;
+    document.getElementById("btnGuide").onclick = stopPlay;
+    document.getElementById("btnHelp").onclick = () => document.getElementById("help").classList.toggle("on");
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); go(i + 1); }
+      if (e.key === "ArrowLeft") go(i - 1);
+      if (e.key === "p" || e.key === "P") startPlay();
+      if (e.key === "s" || e.key === "S") stopPlay();
+      if (e.key === "Escape") { stopPlay(); go(0); }
+    });
+
+    render();
+  </script>
+</body>
+</html>
